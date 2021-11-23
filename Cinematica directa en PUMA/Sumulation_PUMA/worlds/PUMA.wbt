@@ -1,0 +1,24 @@
+#VRML_SIM R2020a utf8
+WorldInfo {
+}
+Viewpoint {
+  orientation -0.6099843740706052 0.7817370546994188 0.12963888575411978 0.4789360516378922
+  position 1.280209517098843 1.662722193250044 3.2495739663328456
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 2 2
+}
+Puma560 {
+  controller "puma_DH"
+  gripperSlot [
+    GPS {
+      translation 0 0.25545 0
+      resolution 0.01
+      speedResolution 0.01
+    }
+  ]
+}
