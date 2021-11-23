@@ -1,0 +1,56 @@
+#VRML_SIM R2020a utf8
+WorldInfo {
+}
+Viewpoint {
+  orientation 1 0 0 4.71238898038469
+  position -0.023969067909864528 4.079111522793615 -0.02845269938114127
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 2 2
+}
+E-puck {
+  translation -0.850163 0 0.815136
+  rotation 0 -1 0 0.261798
+  controller "tangentBug"
+  turretSlot [
+    GPS {
+      translation 0 0 -0.1
+      name "gpsT"
+    }
+  ]
+  groundSensorsSlot [
+    GPS {
+    }
+  ]
+}
+Solid {
+  translation 0.6 -0.025 -0.7
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.05
+        subdivision 2
+      }
+    }
+  ]
+}
+WoodenBox {
+  translation -0.326795 0.05 -0.011065
+  rotation 0 -1 0 0.1309
+  size 0.6 0.1 0.6
+}
+WoodenBox {
+  translation 0.383818 0.05 -0.341352
+  rotation 0 1 0 0.399249
+  name "wooden box(1)"
+  size 0.3 0.1 0.6
+}
