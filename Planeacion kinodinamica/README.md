@@ -1,0 +1,2 @@
+# Planeaci'on Kinodin'amica para uno y dos DDR
+En este trabajo se muestra la implementación del algoritmo RRT para la planeación de trayectorias en un espacio de dos dimensiones para un robot de control diferencial (DDR) en distintas disposiciones de obstáculos dentro de C. El trabajo se extiende para la implementación de dos DDR simultaneos dentro del mismo espacio. El lenguaje utilizado es python y se desarrolla dentro del módulo pygame. Se evalúa el desempeño en cada caso.
