@@ -1,0 +1,291 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <ctime>
+#include <cmath>
+#include <map>
+#include <cairo.h>
+#include <limits>
+#include <algorithm>
+//#include <gtk/gtk.h>
+using namespace std;
+
+#define Pi 3.14159265
+
+void readMap(pair<double,double>&, vector<pair<double,double> >&, vector<pair<double,pair<double,double> > >&, pair<double,double>&);
+pair<int,pair<double,double> > solve2x2(pair<double,double>,pair<double,double>,pair<double,double>,pair<double,double>);
+void visual(pair<double,double>, vector<pair<double,double> >, vector<pair<double,pair<double,double> > >, vector<pair<double,double> >&);
+double dist(pair<double,double>, pair<double,double>);
+void GraphCairo(pair<double,double>, vector<pair<double,double> >, vector<pair<double,double> >, pair<double,double>);
+
+
+
+
+int main(void){
+
+    pair<double,double> dimension;                    // map dimensions
+    pair<double,double> robot;                       // robot location
+    vector<pair<double,double> > mapCoordinates;    // each vertice coordinates of free space
+    vector<pair<double,pair<double,double> > > mapCoordinates_byAngle;    // each vertice ordered by angle respect of robot location
+    vector<pair<double,double> > polygon;          // vertices on visualization polygon
+
+    // File with map specifications is read
+    readMap(dimension, mapCoordinates, mapCoordinates_byAngle, robot);
+
+    visual(robot, mapCoordinates, mapCoordinates_byAngle, polygon);
+
+
+    cout << polygon.size() << endl;
+    for(int i=0; i<polygon.size(); i++)
+        cout << polygon[i].first << " " << polygon[i].second << endl;
+
+    // for(int i =0;i<polygon.size(); i++)
+    //     cout << polygon[i].first << " " << polygon[i].second << endl;
+
+    GraphCairo(dimension, mapCoordinates, polygon, robot);
+
+
+
+
+
+    // for(int i=0; i<mapCoordinates.size(); i++){
+    //     cout << mapCoordinates[i].first<< " " << mapCoordinates[i].second << endl;
+    // }
+    // for(int i=0; i<mapCoordinates_byAngle.size(); i++){
+    //     cout << mapCoordinates_byAngle[i].first<< " " << mapCoordinates_byAngle[i].second.first << " " << mapCoordinates_byAngle[i].second.second << endl;
+    // }
+
+    return 0;
+}
+
+
+void readMap(pair<double,double>& dimension,vector<pair<double,double> >& mapCoordinates, vector<pair<double,pair<double,double> > >& mapCoordinates_byAngle,pair<double,double>& robot){
+    int n;
+    string line;
+    ifstream input;
+
+    input.open("robot.txt");
+    if(input.is_open()){
+        input >> robot.first;
+        input >> robot.second;
+    }
+    input.close();
+
+    input.open("map.txt");
+    if(input.is_open()){
+        input >> dimension.first;
+        input >> dimension.second;
+
+        input >> n;
+
+        pair<double,double> xy;
+        for(int i=0; i<n; i++){
+            input >> xy.first;
+            input >> xy.second;
+
+            mapCoordinates.push_back(xy);
+
+            double angle = atan2(xy.second-robot.second,xy.first-robot.first);
+
+            mapCoordinates_byAngle.push_back(make_pair(angle,xy));
+        }
+    }
+    input.close();
+
+    sort(mapCoordinates_byAngle.begin(),mapCoordinates_byAngle.end());
+
+
+
+    // for(int i=0; i<mapCoordinates_byAngle.size(); i++){
+    //     cout << mapCoordinates_byAngle[i].first<< " " << mapCoordinates_byAngle[i].second.first << " " << mapCoordinates_byAngle[i].second.second << endl;
+    // }
+}
+
+pair<int,pair<double,double> > solve2x2(pair<double,double> p1,pair<double,double> p2,pair<double,double> p3,pair<double,double> p4){
+    pair<double,double> sol(0.0,0.0);
+    int state;
+    double epsilon = 1e-3;
+
+    double a = p1.second - p2.second;
+    double b = p2.first - p1.first;
+    double c = p3.second - p4.second;
+    double d = p4.first - p3.first;
+    double s1 = p2.first*p1.second - p1.first*p2.second;
+    double s2 = p4.first*p3.second - p3.first*p4.second;
+
+    double det = a*d - b*c;
+
+    if(fabs(det) > epsilon){
+        state = 1;
+        sol.first = (s1*d - b*s2)/det;
+        sol.second = (a*s2 - s1*c)/det;
+    }
+    else if(fabs(s1*(c/a)-s2) < epsilon){
+        state = -1;
+    }
+    else
+        state = 0;
+
+    return make_pair(state,sol);
+}
+
+void visual(pair<double,double> robot, vector<pair<double,double> > mapCoordinates, vector<pair<double,pair<double,double> > > mapCoordinates_byAngle, vector<pair<double,double> >& polygon){
+    pair <double, double> p2, p3, p4, p_polygon;
+    pair <int, pair<double,double> > intersection;
+    double epsilon = 1e-2;
+
+
+    for(int i=0; i<mapCoordinates_byAngle.size(); i++){
+        p2 = mapCoordinates_byAngle[i].second;
+
+        double last_distance = HUGE_VAL;//infinity();
+        double new_distance;
+        p_polygon = p2;
+
+        int add = 0;
+
+        
+        // Check intersections for every edge
+        for(int j=0; j<mapCoordinates.size(); j++){
+            
+            if(j == mapCoordinates.size()-1){
+                p3 = mapCoordinates[j];
+                p4 = mapCoordinates[0];
+            }
+            else{
+                p3 = mapCoordinates[j];
+                p4 = mapCoordinates[j+1];
+            }
+
+            // find intersection
+            intersection = solve2x2(robot, p2, p3, p4);
+            int state = intersection.first;
+            pair<double,double> xy = intersection.second;
+            double angle = atan2(xy.second-robot.second, xy.first-robot.first);
+            double angle2 = mapCoordinates_byAngle[i].first;
+
+            if(state == 1){
+                int cuadrant = 0;
+                if(angle2 <= -Pi/2.0 and angle <= -Pi/2.0) cuadrant = 1;
+                if(angle2 > -Pi/2.0 and angle2 <= 0.0 and angle > -Pi/2.0 and angle <= 0.0) cuadrant = 1;
+                if(angle2 > 0.0 and angle2 <= Pi/2.0 and angle > 0.0 and angle <= Pi/2.0) cuadrant = 1;
+                if(angle2 > Pi/2.0 and angle > Pi/2.0) cuadrant = 1;
+
+                if(cuadrant){
+                    double min_x = fmin(p3.first, p4.first);// + epsilon;
+                    double max_x = fmax(p3.first, p4.first);// - epsilon;
+                    double min_y = fmin(p3.second, p4.second);// + epsilon;
+                    double max_y = fmax(p3.second, p4.second);// - epsilon;
+
+                    if(xy.first >= min_x and xy.first <= max_x and xy.second >= min_y and xy.second <= max_y){
+                        new_distance = dist(xy, robot);
+                        if(new_distance < last_distance and xy != p2){
+                            p_polygon = xy;
+                            last_distance = new_distance;
+                            add = 1;
+                        }
+                    }
+                }
+            }
+            else if(state == -1){
+                
+            }
+
+        }
+
+        if(add == 1){
+            if(!polygon.empty()){
+                double theta1 = atan2(p_polygon.second - polygon.back().second, p_polygon.first - polygon.back().first);
+                double theta2 = atan2(p2.second - polygon.back().second, p2.first - polygon.back().first);
+            }
+        }
+
+            
+            
+        polygon.push_back(p_polygon);
+
+        //     new_distance = dist(p2, robot);
+        //     if(new_distance < last_distance+epsilon)
+        //         polygon.push_back(p2);
+
+        // }
+
+        
+
+    }
+
+
+cout << polygon.size() << endl;
+}
+
+
+double dist(pair<double,double> a, pair<double,double> b){
+    return sqrt((b.first-a.first)*(b.first-a.first) + (b.second-a.second)*(b.second-a.second));
+}
+
+
+void GraphCairo(pair<double,double> dimension, vector<pair<double,double> > mapCoordinates,vector<pair<double,double> > polygon, pair<double,double> robot){
+    int scale = 30;
+    if(dimension.first < 100 or dimension.second < 100){
+        dimension.first *= scale;
+        dimension.second *= scale;
+        for(int i=0; i<mapCoordinates.size(); i++){
+            mapCoordinates[i].first *= scale;
+            mapCoordinates[i].second *= scale;
+        }
+        for(int i=0; i<polygon.size(); i++){
+            polygon[i].first *= scale;
+            polygon[i].second *= scale;
+        }
+        robot.first *= scale;
+        robot.second *= scale;
+    }
+    else
+        scale = 1;
+
+
+    cairo_surface_t *surface;
+    cairo_t *cr,*line;
+    surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32,dimension.first,dimension.second);
+    cr = cairo_create (surface);
+    line = cairo_create (surface);
+    cairo_rectangle (cr,0,0,dimension.first,dimension.second);
+    cairo_set_source_rgb (cr,0,0,0);
+    cairo_fill(cr);
+    //////
+
+    cairo_set_source_rgb (cr,1,1,1);
+    cairo_move_to (cr,mapCoordinates[0].first,dimension.second-mapCoordinates[0].second);
+    for(int i=1; i<mapCoordinates.size();i++){
+        cairo_line_to (cr,mapCoordinates[i].first,dimension.second-mapCoordinates[i].second);
+    }
+
+    cairo_close_path(cr);
+    cairo_stroke_preserve(cr);
+    cairo_fill(cr);
+
+    cairo_set_source_rgb (cr,0,0,1);
+    cairo_move_to (cr,polygon[0].first,dimension.second-polygon[0].second);
+    for(int i=1; i<polygon.size();i++){
+        cairo_line_to (cr,polygon[i].first,dimension.second-polygon[i].second);
+    }
+
+    cairo_close_path(cr);
+    cairo_stroke_preserve(cr);
+    cairo_fill(cr);
+
+
+    cairo_set_source_rgb (cr,1,0,0);
+    cairo_arc(cr,robot.first,dimension.second-robot.second,10,0,2*Pi);
+    cairo_fill(cr);
+
+
+    //////
+    cairo_surface_write_to_png (surface,"map.png");
+    cairo_destroy (cr);
+    cairo_destroy (line);
+    cairo_surface_destroy (surface);
+}
